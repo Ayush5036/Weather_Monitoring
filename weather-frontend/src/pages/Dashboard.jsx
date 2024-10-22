@@ -11,6 +11,7 @@ const API_BASE_URL = 'http://localhost:8000';
 export const Dashboard = () => {
   const [currentWeather, setCurrentWeather] = useState([]);
   const [selectedCity, setSelectedCity] = useState('Delhi');
+  const [selectedUnit, setSelectedUnit] = useState('metric'); // Unit state
   const [dailySummary, setDailySummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [thresholds, setThresholds] = useState({ minThreshold: 0, maxThreshold: 50 });
@@ -18,21 +19,39 @@ export const Dashboard = () => {
   const [error, setError] = useState(null);
 
   const cities = ['Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Kolkata', 'Hyderabad'];
+  const units = [
+    { label: 'Celsius', value: 'metric' },
+    { label: 'Fahrenheit', value: 'imperial' },
+    { label: 'Kelvin', value: 'standard' },
+  ];
+
+  // Helper function to get the unit symbol
+  const getUnitSymbol = (unit) => {
+    if (unit === 'imperial') return '°F';
+    if (unit === 'standard') return 'K';
+    return '°C';
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch current weather for all cities
-      const weatherResponse = await axios.get(`${API_BASE_URL}/weather/current`);
+
+      // Fetch current weather with selected unit
+      const weatherResponse = await axios.get(`${API_BASE_URL}/weather/current`, {
+        params: { unit: selectedUnit },
+      });
       setCurrentWeather(weatherResponse.data);
 
       // Fetch daily summary for selected city
-      const summaryResponse = await axios.get(`${API_BASE_URL}/weather/daily-summary/${selectedCity}`);
+      const summaryResponse = await axios.get(`${API_BASE_URL}/weather/daily-summary/${selectedCity}`, {
+        params: { unit: selectedUnit },
+      });
       setDailySummary(summaryResponse.data);
 
       // Fetch alerts for selected city
-      const alertsResponse = await axios.get(`${API_BASE_URL}/alerts/${selectedCity}`);
+      const alertsResponse = await axios.get(`${API_BASE_URL}/alerts/${selectedCity}`, {
+        params: { unit: selectedUnit },
+      });
       setAlerts(alertsResponse.data);
 
       setError(null);
@@ -64,7 +83,7 @@ export const Dashboard = () => {
     const interval = setInterval(fetchData, 300000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, [selectedCity]);
+  }, [selectedCity, selectedUnit]); // Add selectedUnit as a dependency
 
   if (loading && !currentWeather.length) {
     return (
@@ -90,6 +109,17 @@ export const Dashboard = () => {
                 <option key={city} value={city}>{city}</option>
               ))}
             </select>
+
+            {/* Unit selection dropdown */}
+            <select
+              value={selectedUnit}
+              onChange={(e) => setSelectedUnit(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-weather-500 focus:ring-weather-500"
+            >
+              {units.map(unit => (
+                <option key={unit.value} value={unit.value}>{unit.label}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -104,19 +134,28 @@ export const Dashboard = () => {
             <WeatherCard 
               key={weather.city} 
               data={weather} 
+              unitSymbol={getUnitSymbol(selectedUnit)} // Pass unit symbol to WeatherCard
             />
           ))}
         </div>
 
         <div className="space-y-8">
-          <DailySummary data={dailySummary} city={selectedCity} />
+          <DailySummary 
+            data={dailySummary} 
+            city={selectedCity} 
+            unitSymbol={getUnitSymbol(selectedUnit)} // Pass unit symbol to DailySummary
+          />
           
-          <TemperatureChart data={currentWeather} />
+          <TemperatureChart 
+            data={currentWeather} 
+            unitSymbol={getUnitSymbol(selectedUnit)} // Pass unit symbol to TemperatureChart
+          />
 
           <AlertCard 
             currentTemp={dailySummary?.avg_temperature} 
             alertType="Temperature Alert" 
             onThresholdUpdate={updateThresholds} 
+            unitSymbol={getUnitSymbol(selectedUnit)} // Pass unit symbol to AlertCard
           />
 
           {alerts.length > 0 && (

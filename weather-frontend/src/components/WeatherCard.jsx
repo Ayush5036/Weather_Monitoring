@@ -1,4 +1,3 @@
-// src/components/WeatherCard.jsx
 import React from 'react';
 import { Cloud, Droplets, Sun, CloudRain } from 'lucide-react';
 
@@ -15,7 +14,7 @@ const WeatherIcon = ({ condition }) => {
   }
 };
 
-export const WeatherCard = ({ data }) => {
+export const WeatherCard = ({ data, unitSymbol }) => {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
@@ -23,15 +22,10 @@ export const WeatherCard = ({ data }) => {
         <WeatherIcon condition={data.main_condition} />
       </div>
       <div className="space-y-2">
-        <p className="text-3xl font-bold">{data.temperature.toFixed(1)}°C</p>
-        <p className="text-gray-600">Feels like: {data.feels_like.toFixed(1)}°C</p>
+        <p className="text-3xl font-bold">{data.temperature.toFixed(1)}{unitSymbol}</p> {/* Updated with dynamic unit */}
+        <p className="text-gray-600">Feels like: {data.feels_like.toFixed(1)}{unitSymbol}</p> {/* Updated with dynamic unit */}
         <p className="text-gray-600">Condition: {data.main_condition}</p>
       </div>
     </div>
   );
 };
-
-
-
-
-

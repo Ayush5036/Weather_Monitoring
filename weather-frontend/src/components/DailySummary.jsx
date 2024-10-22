@@ -1,7 +1,7 @@
 import React from 'react';
 import { ThermometerSun, ArrowUp, ArrowDown, Cloud } from 'lucide-react';
 
-export const DailySummary = ({ data, city }) => {
+export const DailySummary = ({ data, city, unitSymbol }) => {
   if (!data) return null;
 
   return (
@@ -13,21 +13,21 @@ export const DailySummary = ({ data, city }) => {
             <ThermometerSun className="w-4 h-4 mr-1" />
             <span>Average</span>
           </div>
-          <p className="text-xl font-semibold">{data.avg_temperature}°C</p>
+          <p className="text-xl font-semibold">{data.avg_temperature}{unitSymbol}</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center text-gray-600">
             <ArrowUp className="w-4 h-4 mr-1" />
             <span>Maximum</span>
           </div>
-          <p className="text-xl font-semibold">{data.max_temperature}°C</p>
+          <p className="text-xl font-semibold">{data.max_temperature}{unitSymbol}</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center text-gray-600">
             <ArrowDown className="w-4 h-4 mr-1" />
             <span>Minimum</span>
           </div>
-          <p className="text-xl font-semibold">{data.min_temperature}°C</p>
+          <p className="text-xl font-semibold">{data.min_temperature}{unitSymbol}</p>
         </div>
         <div className="space-y-1">
           <div className="flex items-center text-gray-600">
