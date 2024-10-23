@@ -1,16 +1,24 @@
-// AlertNotification.jsx
-import React, { useEffect } from 'react';
-import { Toast, ToastProvider } from "@/components/ui/toast";
+import React, { useEffect, useState } from 'react';
+import { Toast } from "@/components/ui/toast"; // Ensure correct import path
 import { AlertTriangle } from 'lucide-react';
 
-export const AlertNotification = ({ message, onClose }) => {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
+export const AlertNotification = ({ message = "No alerts", onClose }) => {
+  const [visible, setVisible] = useState(false); // Track visibility of the alert
 
-    return () => clearTimeout(timer);
-  }, [onClose]);
+  useEffect(() => {
+    // Show the alert when the message changes
+    if (message) {
+      setVisible(true);
+      const timer = setTimeout(() => {
+        setVisible(false); // Hide alert after timeout
+        onClose();
+      }, 5000);
+
+      return () => clearTimeout(timer); // Cleanup timer on unmount
+    }
+  }, [message, onClose]);
+
+  if (!visible) return null; // Don't render anything if not visible
 
   return (
     <Toast.Provider>

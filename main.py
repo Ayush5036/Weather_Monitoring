@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import httpx
 import asyncio
 from datetime import datetime, timedelta
@@ -12,6 +13,8 @@ import json
 from datetime import datetime
 import pytz
 from contextlib import asynccontextmanager
+import time
+from sqlalchemy.orm import Session
 
 # Pydantic models
 class WeatherData(BaseModel):
@@ -148,6 +151,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class AlertTracker:
+    def __init__(self):
+        self.consecutive_breaches: Dict[str, Dict] = {}  # Track consecutive breaches per city
+        self.breach_threshold = 2  # Number of consecutive breaches needed to trigger alert
+
+alert_tracker = AlertTracker()
+
 async def fetch_weather_data(city: str, unit: str = 'metric') -> WeatherData:
     """Fetch weather data from OpenWeather API"""
     async with httpx.AsyncClient() as client:
@@ -203,10 +213,12 @@ def store_weather_data(weather_data: WeatherData):
     conn.commit()
     conn.close()
 
+# Update the check_temperature_alerts function
 def check_temperature_alerts(weather_data: WeatherData):
-    """Check for temperature alerts"""
+    """Check for temperature alerts with consecutive breach tracking"""
     # Convert temperature to Celsius for comparison
     temperature = convert_to_celsius(weather_data.temperature, weather_data.unit)
+    current_time = datetime.now()
 
     conn = sqlite3.connect('weather_data.db')
     c = conn.cursor()
@@ -221,22 +233,62 @@ def check_temperature_alerts(weather_data: WeatherData):
     
     if threshold:
         min_temp, max_temp = threshold
+        city_breaches = alert_tracker.consecutive_breaches.get(weather_data.city, {
+            'count': 0,
+            'type': None,
+            'last_check': None
+        })
+
+        # Check if this is a consecutive breach within 10 minutes
+        is_consecutive = (
+            city_breaches['last_check'] is not None and
+            (current_time - city_breaches['last_check']).total_seconds() <= 600  # 10 minutes
+        )
+
+        # Reset if too much time has passed
+        if not is_consecutive:
+            city_breaches['count'] = 0
+            city_breaches['type'] = None
+
         if temperature < min_temp:
-            alert = Alert(
-                city=weather_data.city,
-                alert_type="low_temperature",
-                message=f"Temperature dropped below {min_temp}°C",
-                timestamp=int(datetime.now().timestamp())
-            )
-            save_alert(alert, c)
+            if city_breaches['type'] == 'low' and is_consecutive:
+                city_breaches['count'] += 1
+            else:
+                city_breaches['count'] = 1
+                city_breaches['type'] = 'low'
         elif temperature > max_temp:
+            if city_breaches['type'] == 'high' and is_consecutive:
+                city_breaches['count'] += 1
+            else:
+                city_breaches['count'] = 1
+                city_breaches['type'] = 'high'
+        else:
+            # Reset if temperature is within bounds
+            city_breaches['count'] = 0
+            city_breaches['type'] = None
+
+        # Update last check time
+        city_breaches['last_check'] = current_time
+        alert_tracker.consecutive_breaches[weather_data.city] = city_breaches
+
+        # Create alert if threshold breached consecutively
+        if city_breaches['count'] >= alert_tracker.breach_threshold:
+            alert_type = f"consecutive_{city_breaches['type']}_temperature"
+            message = (
+                f"Temperature {'below' if city_breaches['type'] == 'low' else 'above'} "
+                f"threshold for {city_breaches['count']} consecutive checks"
+            )
             alert = Alert(
                 city=weather_data.city,
-                alert_type="high_temperature",
-                message=f"Temperature exceeded {max_temp}°C",
-                timestamp=int(datetime.now().timestamp())
+                alert_type=alert_type,
+                message=message,
+                timestamp=int(current_time.timestamp())
             )
             save_alert(alert, c)
+            # Reset after creating alert
+            city_breaches['count'] = 0
+            city_breaches['type'] = None
+            print(f"ALERT: {message} in {weather_data.city}")  # Console output
     
     conn.commit()
     conn.close()
@@ -370,13 +422,16 @@ async def get_alerts(city: str):
         
     conn = sqlite3.connect('weather_data.db')
     c = conn.cursor()
-    
+
+    ten_minutes_ago = int(time.time()) - 600  # 600 seconds = 10 minutes
+
+    # Fetch alerts within the last 10 minutes for the specific city
     c.execute('''
         SELECT * FROM alerts
-        WHERE city = ?
+        WHERE city = ? AND timestamp >= ?
         ORDER BY timestamp DESC
         LIMIT 10
-    ''', (city,))
+    ''', (city, ten_minutes_ago))
     
     alerts = [{
         "city": row[1],
@@ -401,3 +456,50 @@ async def clear_db():
     conn.commit()
     conn.close()
     return {"message": "All data cleared successfully"}
+
+
+@app.get("/api/weather/{city}/last_month")
+async def get_last_month_weather(city: str):
+    """Get weather data for the last month for a specific city"""
+    # Calculate the date range for the last 30 days
+    today = datetime.now()
+    last_month_date = today - timedelta(days=30)
+    last_month_timestamp = int(last_month_date.timestamp())
+
+    conn = sqlite3.connect('weather_data.db')
+    c = conn.cursor()
+
+    try:
+        # Query the database for weather data from the last 30 days
+        c.execute('''
+            SELECT DISTINCT city, avg(temperature), avg(feels_like), max(main_condition), timestamp
+            FROM weather_data
+            WHERE city = ? AND timestamp >= ?
+        ''', (city, last_month_timestamp))
+        
+        weather_data = c.fetchall()
+
+        
+        
+        if not weather_data:
+            raise HTTPException(status_code=404, detail="No data found for the last month.")
+
+        # Format the results into a list of dictionaries
+        result = [
+            {
+                "city": row[0],
+                "temperature":round(row[1],2),
+                "feels_like": round(row[2],2),
+                "main_condition": row[3],
+                "timestamp": datetime.fromtimestamp(row[4]).isoformat()
+            }
+            for row in weather_data
+        ]
+        
+        return JSONResponse(content={"data": result})
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    finally:
+        conn.close()

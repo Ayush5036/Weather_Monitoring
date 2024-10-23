@@ -4,7 +4,8 @@ import { WeatherCard } from '../components/WeatherCard';
 import { AlertCard } from '../components/AlertCard';
 import { DailySummary } from '../components/DailySummary';
 import { TemperatureChart } from '../components/TemperatureChart';
-import { MapPin, Theater } from 'lucide-react';
+import { WeatherHistory } from '../components/WeatherHistory';  // Import the new component
+import { MapPin } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -15,6 +16,7 @@ export const Dashboard = () => {
   const [dailySummary, setDailySummary] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [thresholds, setThresholds] = useState({ minThreshold: 0, maxThreshold: 50 });
+  const [weatherHistory, setWeatherHistory] = useState([]);  // State for weather history
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -54,6 +56,12 @@ export const Dashboard = () => {
       });
       setAlerts(alertsResponse.data);
 
+      // Fetch last month's weather history
+      const historyResponse = await axios.get(`${API_BASE_URL}/api/weather/${selectedCity}/last_month`, {
+        params: { unit: selectedUnit },
+      });
+      setWeatherHistory(historyResponse.data);  // Update the weather history
+
       setError(null);
     } catch (err) {
       setError('Failed to fetch weather data. Please try again later.');
@@ -65,7 +73,6 @@ export const Dashboard = () => {
 
   const updateThresholds = async (thresholds) => {
     setThresholds(thresholds);
-  
   
     try {
       await axios.post(`${API_BASE_URL}/alerts/threshold`, {
@@ -159,11 +166,17 @@ export const Dashboard = () => {
           />
 
           <AlertCard 
+            city={selectedCity} 
             currentTemp={dailySummary?.avg_temperature} 
             alertType="Temperature Alert" 
             onThresholdUpdate={updateThresholds} 
             unitSymbol={getUnitSymbol(selectedUnit)} // Pass unit symbol to AlertCard
+            minThreshold={thresholds.minThreshold} // Pass min threshold
+            maxThreshold={thresholds.maxThreshold}
           />
+
+          {/* Weather History for the last month */}
+          <WeatherHistory city={selectedCity} />
 
           {alerts.length > 0 && (
             <div className="bg-white rounded-lg shadow-md p-6">
