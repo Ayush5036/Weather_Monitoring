@@ -251,6 +251,8 @@ def save_alert(alert: Alert, cursor):
 @app.post("/alerts/threshold")
 async def set_temperature_threshold(threshold: ThresholdRequest):
     """Set user-defined temperature thresholds for a specific city"""
+
+    print("Received Threshold:", threshold)
     if threshold.unit not in VALID_UNITS:
         raise HTTPException(status_code=400, detail="Invalid unit. Use 'metric', 'imperial', or 'standard'")
 

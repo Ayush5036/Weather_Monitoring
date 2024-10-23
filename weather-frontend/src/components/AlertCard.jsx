@@ -4,10 +4,15 @@ import { AlertTriangle } from 'lucide-react';
 export const AlertCard = ({ currentTemp, alertType, onThresholdUpdate, unitSymbol }) => {
   const [minThreshold, setMinThreshold] = useState(0);
   const [maxThreshold, setMaxThreshold] = useState(50);
-  const [alertMessage, setAlertMessage] = useState('');
+  const [alertMessage, setAlertMessage] = useState("");
+
+  
+  currentTemp=Number(currentTemp)
 
   useEffect(() => {
+    
     if (currentTemp < minThreshold) {
+      
       setAlertMessage(`Temperature dropped below ${minThreshold}${unitSymbol}`);
     } else if (currentTemp > maxThreshold) {
       setAlertMessage(`Temperature exceeded ${maxThreshold}${unitSymbol}`);
@@ -18,6 +23,7 @@ export const AlertCard = ({ currentTemp, alertType, onThresholdUpdate, unitSymbo
 
   // Call the callback function when thresholds are updated
   useEffect(() => {
+    
     onThresholdUpdate({ minThreshold, maxThreshold });
   }, [minThreshold, maxThreshold]);
 

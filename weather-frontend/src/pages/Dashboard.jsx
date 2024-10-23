@@ -4,7 +4,7 @@ import { WeatherCard } from '../components/WeatherCard';
 import { AlertCard } from '../components/AlertCard';
 import { DailySummary } from '../components/DailySummary';
 import { TemperatureChart } from '../components/TemperatureChart';
-import { MapPin } from 'lucide-react';
+import { MapPin, Theater } from 'lucide-react';
 
 const API_BASE_URL = 'http://localhost:8000';
 
@@ -63,18 +63,25 @@ export const Dashboard = () => {
     }
   };
 
-  // Update thresholds and send to backend
-  const updateThresholds = async (newThresholds) => {
-    setThresholds(newThresholds);
-
+  const updateThresholds = async (thresholds) => {
+    setThresholds(thresholds);
+  
+  
     try {
       await axios.post(`${API_BASE_URL}/alerts/threshold`, {
         city: selectedCity,
-        minThreshold: newThresholds.minThreshold,
-        maxThreshold: newThresholds.maxThreshold,
+        min_temp: thresholds.minThreshold,
+        max_temp: thresholds.maxThreshold,
+        unit: selectedUnit
       });
+      console.log('POST request successful'); // This will log if the request was successful
     } catch (err) {
-      console.error('Failed to update thresholds:', err);
+      console.error('Error in POST request:', err); // General error log
+      if (err.response) {
+        console.error('Error response data:', err.response.data);
+      } else {
+        console.error('Error message:', err.message);
+      }
     }
   };
 
