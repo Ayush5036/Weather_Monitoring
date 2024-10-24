@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - frontend
+
+  frontend:
+    build:
+      context: ./weather-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./weather-frontend:/app
