@@ -472,14 +472,38 @@ async def get_last_month_weather(city: str):
     try:
         # Query the database for weather data from the last 30 days
         c.execute('''
-            SELECT DISTINCT city, avg(temperature), avg(feels_like), max(main_condition), timestamp
-            FROM weather_data
-            WHERE city = ? AND timestamp >= ?
+            SELECT 
+                city,
+                date(timestamp, 'unixepoch') as date,
+                AVG(temperature) as avg_temp,
+                AVG(feels_like) as avg_feels_like,
+                weather_condition,
+                COUNT(*) as count_per_day
+            FROM (
+                SELECT 
+                    city,
+                    timestamp,
+                    temperature,
+                    feels_like,
+                    CASE 
+                        WHEN main_condition = 'Rain' THEN 'Rain'
+                        WHEN main_condition = 'Smoke' THEN 'Smoke'
+                        WHEN main_condition = 'Haze' THEN 'Haze'
+                        WHEN main_condition = 'Clouds' THEN 'Clouds'
+                        WHEN main_condition = 'Mist' THEN 'Mist'
+                        ELSE 'Other'
+                    END as weather_condition
+                FROM weather_data
+                WHERE city = ? AND timestamp >= ?
+            )
+            GROUP BY 
+                city,
+                date(timestamp, 'unixepoch'),
+                weather_condition
+            ORDER BY date;
         ''', (city, last_month_timestamp))
         
         weather_data = c.fetchall()
-
-        
         
         if not weather_data:
             raise HTTPException(status_code=404, detail="No data found for the last month.")
@@ -488,10 +512,11 @@ async def get_last_month_weather(city: str):
         result = [
             {
                 "city": row[0],
-                "temperature":round(row[1],2),
-                "feels_like": round(row[2],2),
-                "main_condition": row[3],
-                "timestamp": datetime.fromtimestamp(row[4]).isoformat()
+                "date": row[1],
+                "avg_temperature": round(row[2], 2),
+                "avg_feels_like": round(row[3], 2),
+                "weather_condition": row[4],
+                "count": row[5]
             }
             for row in weather_data
         ]

@@ -62,9 +62,9 @@ export const WeatherHistory = ({ city }) => {
               <div className="flex items-center gap-2">
                 <Thermometer className="w-4 h-4 text-amber-600" />
                 <p className="text-gray-700">
-                  <span className="font-medium">{entry.temperature}°C</span>
+                  <span className="font-medium">{entry.avg_temperature}°C</span>
                   <span className="ml-2 text-sm text-gray-500">
-                    (Feels like: {entry.feels_like}°C)
+                    (Feels like: {entry.avg_feels_like}°C)
                   </span>
                 </p>
               </div>
@@ -72,14 +72,14 @@ export const WeatherHistory = ({ city }) => {
               <div className="flex items-center gap-2">
                 <Cloud className="w-4 h-4 text-amber-600" />
                 <p className="text-gray-700">
-                  {entry.main_condition}
+                  {entry.weather_condition}
                 </p>
               </div>
               
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
                 <p className="text-sm text-gray-600">
-                  {new Date(entry.timestamp).toLocaleString()}
+                  {new Date(entry.date).toLocaleString()}
                 </p>
               </div>
             </div>
