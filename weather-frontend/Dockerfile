@@ -1,18 +1,9 @@
-# Frontend Dockerfile
 FROM node:18-alpine
-
-# Set the working directory
 WORKDIR /app
-
-# Copy package.json and install dependencies
-COPY package.json /app/
+# Copy package files
+COPY package*.json ./
 RUN npm install
-
-# Copy the rest of the frontend code
-COPY . /app
-
-# Expose port 5173 for the React app
+COPY . .
 EXPOSE 5173
-
-# Command to run the React app
-CMD ["npm", "run", "dev"]
+# Update the dev command to allow external connections
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
